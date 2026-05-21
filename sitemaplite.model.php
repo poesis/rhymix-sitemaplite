@@ -20,6 +20,8 @@ class SitemapLiteModel extends SitemapLite
 			'procMenuAdminInsertItem' => true,
 			'procMenuAdminUpdateItem' => true,
 			'procMenuAdminDeleteItem' => true,
+			'procDocumentInsertCategory' => true,
+			'procDocumentDeleteCategory' => true,
 		);
 
 		$document_target_actions = array(
