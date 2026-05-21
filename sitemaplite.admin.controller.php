@@ -180,6 +180,22 @@ class SitemapLiteAdminController extends SitemapLite
 					{
 						$urls[] = $url;
 					}
+
+					if (preg_match('/^\w+$/', $item->url))
+					{
+						$module_info = ModuleModel::getModuleInfoByMid($item->url);
+						if ($module_info && $module_info->module_srl)
+						{
+							$categories = DocumentModel::getCategoryList($module_info->module_srl);
+							if ($categories)
+							{
+								foreach ($categories as $category)
+								{
+									$urls[] = 'abs:' . getNotEncodedUrl(['mid' => $item->url, 'category' => $category->category_srl]);
+								}
+							}
+						}
+					}
 				}
 			}
 
