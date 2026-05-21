@@ -163,6 +163,7 @@ class SitemapLiteAdminController extends SitemapLite
 			$oMenuAdminModel = getAdminModel('menu');
 			foreach ($domain_config->menu_srls as $menu_srl)
 			{
+				$categories_added = [];
 				$menu_items = $oMenuAdminModel->getMenuItems($menu_srl);
 				foreach ($menu_items->data as $item)
 				{
@@ -186,6 +187,7 @@ class SitemapLiteAdminController extends SitemapLite
 						$module_info = ModuleModel::getModuleInfoByMid($item->url);
 						if ($module_info && $module_info->module_srl)
 						{
+							$categories_added[$module_info->module_srl] = true;
 							$categories = DocumentModel::getCategoryList($module_info->module_srl);
 							if ($categories)
 							{
@@ -202,6 +204,29 @@ class SitemapLiteAdminController extends SitemapLite
 			// Insert URL for documents
 			if ($domain_config->document_count && $domain_config->document_source_modules)
 			{
+				// Get conversion map (module_srl -> mid)
+				$midmap = [];
+				$output = executeQueryArray('sitemaplite.getModuleList', ['module_srl' => $domain_config->document_source_modules]);
+				foreach ($output->data as $module)
+				{
+					$midmap[intval($module->module_srl)] = $module->mid;
+				}
+
+				// Add category URLs for document source modules
+				foreach ($domain_config->document_source_modules as $module_srl)
+				{
+					if (!isset($categories_added[$module_srl]))
+					{
+						$categories_added[$module_srl] = true;
+						$categories = DocumentModel::getCategoryList($module_srl);
+						foreach ($categories ?: [] as $category)
+						{
+							$urls[] = 'abs:' . getNotEncodedUrl(['mid' => $midmap[$module_srl], 'category' => $category->category_srl]);
+						}
+					}
+				}
+
+				// Add documents
 				$this->_addDocumentUrls($urls, $domain_config);
 			}
 
@@ -381,23 +406,14 @@ class SitemapLiteAdminController extends SitemapLite
 		$args->list_count = $config->document_count ?? 100;
 		$args->sort_index = $sort_index;
 		$args->status = 'PUBLIC';
-		$output = executeQuery('sitemaplite.getDocumentList', $args);
-		$output->data = $output->data ? (is_array($output->data) ? $output->data : array($output->data)) : null;
-		$midmap = array();
+		$output = executeQueryArray('sitemaplite.getDocumentList', $args);
+
+		// Extract mid map from config
+		$midmap = $config->midmap ?? [];
 
 		// If documents are found...
 		if ($documents = $output->data)
 		{
-			// Get conversion map (module_srl -> mid)
-			$args = new stdClass;
-			$args->module_srl = $config->document_source_modules ?? [];
-			$output = executeQuery('sitemaplite.getModuleList', $args);
-			$output->data = $output->data ? (is_array($output->data) ? $output->data : array($output->data)) : null;
-			foreach ($output->data as $module)
-			{
-				$midmap[intval($module->module_srl)] = $module->mid;
-			}
-
 			// Add each document to the URL list
 			foreach ($documents as $document)
 			{
