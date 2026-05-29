@@ -41,7 +41,7 @@ class SitemapLiteModel extends SitemapLite
 			if (preg_match($regexp, $trigger_obj->act))
 			{
 				$config = $this->getConfig();
-				if ($config->document_count && $config->document_source_modules)
+				if (!empty($config->document_count) && !empty($config->document_source_modules))
 				{
 					switch ($config->refresh_interval ?? $config->document_interval)
 					{
