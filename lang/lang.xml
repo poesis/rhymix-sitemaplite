@@ -168,4 +168,12 @@
 		<value xml:lang="ko"><![CDATA[수동]]></value>
 		<value xml:lang="en"><![CDATA[Manual Only]]></value>
 	</item>
+	<item name="cmd_sitemaplite_use_async">
+		<value xml:lang="ko"><![CDATA[비동기 처리 사용]]></value>
+		<value xml:lang="en"><![CDATA[Use Asynchronous Processing]]></value>
+	</item>
+	<item name="cmd_sitemaplite_about_use_async">
+		<value xml:lang="ko"><![CDATA[라이믹스 코어에서 지원하는 경우, 사이트맵 생성 작업을 비동기 처리하여 글 작성시 지연을 방지합니다.]]></value>
+		<value xml:lang="en"><![CDATA[If supported by the Rhymix core, sitemap generation tasks will be processed asynchronously to prevent delays.]]></value>
+	</item>
 </lang>

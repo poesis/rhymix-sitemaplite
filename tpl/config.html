@@ -224,6 +224,21 @@
 		</div>
 
 		<div class="x_control-group">
+			<label class="x_control-label">{$lang->cmd_sitemaplite_use_async}</label>
+			<div class="x_controls">
+				<label class="x_inline">
+					<input name="sitemaplite_use_async" type="radio" value="Y" checked="checked"|cond="$config->use_async === 'Y' && config('queue.enabled')" disabled="disabled"|cond="!config('queue.enabled')" />
+					{$lang->cmd_yes}
+				</label>
+				<label class="x_inline">
+					<input name="sitemaplite_use_async" type="radio" value="N" checked="checked"|cond="$config->use_async !== 'Y' || !config('queue.enabled')" />
+					{$lang->cmd_no}
+				</label>
+				<p class="x_help-block">{$lang->cmd_sitemaplite_about_use_async}</p>
+			</div>
+		</div>
+
+		<div class="x_control-group">
 			<label class="x_control-label">{$lang->cmd_sitemaplite_ping_search_engines}</label>
 			<div class="x_controls">
 				<label class="x_inline">

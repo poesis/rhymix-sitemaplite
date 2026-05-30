@@ -9,10 +9,12 @@
 class SitemapLiteModel extends SitemapLite
 {
 	/**
-	 * Update sitemap.xml after editing menu
+	 * Trigger called when sitemap.xml may need to be updated
 	 */
 	public function triggerUpdateSitemapXML($trigger_obj)
 	{
+		$config = $this->getConfig();
+
 		$menu_target_actions = array(
 			'procMenuAdminInsert' => true,
 			'procMenuAdminUpdate' => true,
@@ -31,7 +33,7 @@ class SitemapLiteModel extends SitemapLite
 		// Update sitemap.xml if the menu has changed
 		if (isset($menu_target_actions[$trigger_obj->act]))
 		{
-			getAdminController('sitemaplite')->writeSitemapXml();
+			$this->updateSitemap($config);
 			return;
 		}
 
@@ -40,7 +42,6 @@ class SitemapLiteModel extends SitemapLite
 		{
 			if (preg_match($regexp, $trigger_obj->act))
 			{
-				$config = $this->getConfig();
 				if (!empty($config->document_count) && !empty($config->document_source_modules))
 				{
 					switch ($config->refresh_interval ?? $config->document_interval)
@@ -58,10 +59,33 @@ class SitemapLiteModel extends SitemapLite
 					if ($timediff > 0 && filemtime($xml_path) < time() - $timediff)
 					{
 						@touch($xml_path);
-						getAdminController('sitemaplite')->writeSitemapXml($config);
+						$this->updateSitemap($config);
 					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Update wrapper #1
+	 */
+	public function updateSitemap($config = null)
+	{
+		if (($config->use_async ?? 'N') === 'Y' && config('queue.enabled'))
+		{
+			Rhymix\Framework\Queue::addTask(self::class . '::updateSitemapStatic', new stdClass());
+		}
+		else
+		{
+			getAdminController('sitemaplite')->writeSitemapXml($config);
+		}
+	}
+
+	/**
+	 * Update wrapper #2
+	 */
+	public static function updateSitemapStatic()
+	{
+		getAdminController('sitemaplite')->writeSitemapXml();
 	}
 }

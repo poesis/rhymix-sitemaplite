@@ -75,6 +75,10 @@ class SitemapLiteAdminController extends SitemapLite
 			$config->refresh_interval = 'daily';
 		}
 
+		// Async settings
+		$config->use_async = ($vars->sitemaplite_use_async === 'Y') ? 'Y' : 'N';
+
+		// Search engine ping settings
 		$ping_search_engines = $vars->sitemaplite_ping_search_engines;
 		$config->ping_search_engines = is_array($ping_search_engines) ? $ping_search_engines : array();
 
@@ -94,20 +98,27 @@ class SitemapLiteAdminController extends SitemapLite
 		// Try to write new sitemap.xml file
 		if ($output->toBool())
 		{
-			$write_success = $this->writeSitemapXml($config);
-			if ($write_success)
+			if (($config->use_async ?? 'N') === 'Y' && config('queue.enabled'))
 			{
-				$this->setMessage('success_registed');
+				Rhymix\Framework\Queue::addTask('SitemapliteModel::updateSitemapStatic', new stdClass());
 			}
 			else
 			{
-				if (class_exists('BaseObject'))
+				$write_success = $this->writeSitemapXml($config);
+				if ($write_success)
 				{
-					return new BaseObject(-1, 'msg_sitemaplite_failed_to_write_xml_file');
+					$this->setMessage('success_registed');
 				}
 				else
 				{
-					return new Object(-1, 'msg_sitemaplite_failed_to_write_xml_file');
+					if (class_exists('BaseObject'))
+					{
+						return new BaseObject(-1, 'msg_sitemaplite_failed_to_write_xml_file');
+					}
+					else
+					{
+						return new Object(-1, 'msg_sitemaplite_failed_to_write_xml_file');
+					}
 				}
 			}
 		}
@@ -144,7 +155,7 @@ class SitemapLiteAdminController extends SitemapLite
 		{
 			$scheme = $domain->security === 'always' ? 'https://' : 'http://';
 			$port = $domain->security === 'always' ? $domain->https_port : $domain->http_port;
-			$baseurl = $scheme . $domain->domain . ($port ? sprintf(':%d', $port) : '') . RX_BASEURL;
+			$baseurl = $scheme . $domain->domain . ($port ? sprintf(':%d', $port) : '') .  parse_url(config('url.default'), PHP_URL_PATH);
 			$domain->sitemaplite_prefix = Rhymix\Framework\URL::encodeIdna($baseurl);
 
 			if ($config->sitemap_file_path === 'domains' || $domain->is_default_domain === 'Y')
@@ -193,7 +204,12 @@ class SitemapLiteAdminController extends SitemapLite
 							{
 								foreach ($categories as $category)
 								{
-									$urls[] = 'abs:' . getNotEncodedUrl(['mid' => $item->url, 'category' => $category->category_srl]);
+									$category_url = getNotEncodedUrl(['mid' => $item->url, 'category' => $category->category_srl]);
+									if (preg_match('!^https?://.+!', $category_url))
+									{
+										$category_url = parse_url($category_url, PHP_URL_PATH);
+									}
+									$urls[] = 'abs:' . $category_url;
 								}
 							}
 						}
@@ -221,12 +237,18 @@ class SitemapLiteAdminController extends SitemapLite
 						$categories = DocumentModel::getCategoryList($module_srl);
 						foreach ($categories ?: [] as $category)
 						{
-							$urls[] = 'abs:' . getNotEncodedUrl(['mid' => $midmap[$module_srl], 'category' => $category->category_srl]);
+							$category_url = getNotEncodedUrl(['mid' => $midmap[$module_srl], 'category' => $category->category_srl]);
+							if (preg_match('!^https?://.+!', $category_url))
+							{
+								$category_url = parse_url($category_url, PHP_URL_PATH);
+							}
+							$urls[] = 'abs:' . $category_url;
 						}
 					}
 				}
 
 				// Add documents
+				$domain_config->midmap = $midmap;
 				$this->_addDocumentUrls($urls, $domain_config);
 			}
 
