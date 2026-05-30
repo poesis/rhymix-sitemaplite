@@ -5,6 +5,7 @@
 	<actions>
 		<action name="dispSitemapliteAdminConfig" type="view" admin_index="true" menu_name="sitemaplite" />
 		<action name="procSitemapliteAdminInsertConfig" type="controller" />
+		<action name="dispSitemapliteServeSitemapXml" type="view" method="GET" route="sitemap\.xml" global-route="true" />
 	</actions>
 	<menus>
 		<menu name="sitemaplite" type="all">
