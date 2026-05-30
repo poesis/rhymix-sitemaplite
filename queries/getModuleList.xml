@@ -9,7 +9,7 @@
 	</columns>
 	<conditions>
 		<condition operation="in" column="module" var="module" />
-		<condition operation="in" column="module_srl" var="module_srl" pipe="and" />
+		<condition operation="in" column="module_srl" var="module_srl" />
 	</conditions>
 	<navigation>
 		<index var="sort_index" default="browser_title" order="asc" />

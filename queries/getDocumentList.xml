@@ -8,7 +8,7 @@
 	</columns>
 	<conditions>
 		<condition operation="in" column="module_srl" var="module_srl" notnull="notnull" />
-		<condition operation="in" column="status" var="status" pipe="and" />
+		<condition operation="in" column="status" var="status" />
 	</conditions>
 	<navigation>
 		<index var="sort_index" default="regdate" order="desc" />
