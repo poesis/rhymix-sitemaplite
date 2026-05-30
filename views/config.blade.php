@@ -76,7 +76,7 @@
 				<br />
 				<label class="x_inline">
 					<input name="sitemaplite_file_path" type="radio" value="domains" @checked($config->sitemap_file_path === 'domains') />
-					{{ preg_replace('@/[^/]+/sitemap\.xml$@', '/' . $lang->cmd_sitemaplite_domain . '/sitemap.xml', $sitemaplite_url_domains) }}
+					{!! preg_replace('@/[^/]+/sitemap\.xml$@', '/' . $lang->cmd_sitemaplite_domain . '/sitemap.xml', $sitemaplite_url_domains) !!}
 				</label>
 				@if (!$sitemaplite_path_domains_writable)
 					<span class="not_writable">({{ $lang->cmd_sitemaplite_not_writable }})</span>
