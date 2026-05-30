@@ -2,7 +2,7 @@
 
 /**
  * @file sitemaplite.class.php
- * @author Kijin Sung <kijin@kijinsung.com>
+ * @author POESIS <kijin@poesis.dev>
  * @license GPLv2 or Later <https://www.gnu.org/licenses/gpl-2.0.html>
  * @brief Sitemap Lite Main Class
  */
