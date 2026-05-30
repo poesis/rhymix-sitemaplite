@@ -170,7 +170,7 @@ class Admin extends Base
 		$config->use_async = ($vars->sitemaplite_use_async === 'Y') ? 'Y' : 'N';
 
 		// Search engine ping settings
-		$ping_search_engines = $vars->sitemaplite_ping_search_engines;
+		$ping_search_engines = $vars->sitemaplite_ping_search_engines ?? [];
 		$config->ping_search_engines = is_array($ping_search_engines) ? $ping_search_engines : [];
 
 		// Delete old config items

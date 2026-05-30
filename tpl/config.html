@@ -150,7 +150,7 @@
 				<label class="x_control-label">{$lang->cmd_sitemaplite_document_order}</label>
 				<div class="x_controls">
 					<label class="x_inline">
-						<input name="sitemaplite_document_order[{$domain->domain_srl}]" type="radio" value="recent" checked="checked"|cond="$config->domains[$domain->domain_srl]->document_order === 'recent' || !$config->document_order" />
+						<input name="sitemaplite_document_order[{$domain->domain_srl}]" type="radio" value="recent" checked="checked"|cond="$config->domains[$domain->domain_srl]->document_order === 'recent' || empty($config->domains[$domain->domain_srl]->document_order)" />
 						{$lang->cmd_sitemaplite_order_recent}
 					</label>
 					<label class="x_inline">
