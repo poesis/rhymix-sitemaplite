@@ -95,7 +95,7 @@ class Admin extends Base
 		Context::set('sitemaplite_module_list', $this->_getModuleList());
 		Context::set('sitemaplite_menus', MenuAdminModel::getInstance()->getMenus());
 
-		$this->setTemplatePath($this->module_path . 'tpl');
+		$this->setTemplatePath($this->module_path . 'views');
 		$this->setTemplateFile('config');
 	}
 
