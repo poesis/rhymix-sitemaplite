@@ -7,6 +7,7 @@ use Rhymix\Modules\SitemapLite\Models\Sitemap as SitemapModel;
 use BaseObject;
 use Context;
 use MenuAdminModel;
+use ModuleController;
 use ModuleModel;
 
 class Admin extends Base
@@ -183,7 +184,7 @@ class Admin extends Base
 		unset($config->document_interval);
 
 		// Save new config
-		$oModuleController = getController('module');
+		$oModuleController = ModuleController::getInstance();
 		$output = $oModuleController->insertModuleConfig('sitemaplite', $config);
 
 		// Try to write new sitemap.xml file
