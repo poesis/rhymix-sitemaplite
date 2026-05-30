@@ -1,152 +1,59 @@
 <?php
 
-/**
- * @file sitemaplite.admin.controller.php
- * @author POESIS <kijin@poesis.dev>
- * @license GPLv2 or Later <https://www.gnu.org/licenses/gpl-2.0.html>
- * @brief Sitemap Lite Admin Controller
- */
-class SitemapLiteAdminController extends SitemapLite
+namespace Rhymix\Modules\SitemapLite\Models;
+
+use Rhymix\Modules\SitemapLite\Controllers\Base as BaseController;
+use Rhymix\Framework\HTTP;
+use Rhymix\Framework\Queue;
+use Rhymix\Framework\Storage;
+use Rhymix\Framework\URL;
+use DocumentModel;
+use MenuAdminModel;
+use ModuleModel;
+
+class Sitemap
 {
 	/**
-	 * Save admin config
+	 * Update wrapper #1
+	 *
+	 * @param ?object $config
+	 * @return void
 	 */
-	public function procSitemapliteAdminInsertConfig()
+	public static function updateSitemap(?object $config = null)
 	{
-		// Get current config and request vars
-		$config = $this->getConfig();
-		$vars = Context::getRequestVars();
-
-		// Sitemap path
-		$file_path = $vars->sitemaplite_file_path;
-		$config->sitemap_file_path = in_array($file_path, array('root', 'sub', 'files', 'domains')) ? $file_path : 'root';
-
-		// Load per-domain config
-		$config->domains = [];
-		$domains = ModuleModel::getAllDomains(100)->data ?? [];
-		foreach ($domains as $domain)
+		if (($config->use_async ?? 'N') === 'Y' && config('queue.enabled'))
 		{
-			$config->domains[$domain->domain_srl] = new stdClass;
-
-			$menu_srls = $vars->sitemaplite_menu_srls[$domain->domain_srl] ?? [];
-			$menu_srls = is_array($menu_srls) ? array_values($menu_srls) : [];
-			$config->domains[$domain->domain_srl]->menu_srls = array_unique(array_map('intval', $menu_srls));
-
-			$only_public_menus = $vars->sitemaplite_only_public_menus[$domain->domain_srl] ?? 'Y';
-			$config->domains[$domain->domain_srl]->only_public_menus = ($only_public_menus === 'Y') ? true : false;
-
-			$document_source_modules = $vars->sitemaplite_document_source_modules[$domain->domain_srl] ?? [];
-			$document_source_modules = is_array($document_source_modules) ? array_values($document_source_modules) : [];
-			$config->domains[$domain->domain_srl]->document_source_modules = array_unique(array_map('intval', $document_source_modules));
-
-			$config->domains[$domain->domain_srl]->document_count = intval($vars->sitemaplite_document_count[$domain->domain_srl] ?? 100);
-			if ($config->domains[$domain->domain_srl]->document_count < 0)
-			{
-				$config->domains[$domain->domain_srl]->document_count = 0;
-			}
-			if ($config->domains[$domain->domain_srl]->document_count > 48000)
-			{
-				$config->domains[$domain->domain_srl]->document_count = 48000;
-			}
-
-			$config->domains[$domain->domain_srl]->document_order = $vars->sitemaplite_document_order[$domain->domain_srl] ?? 'recent';
-			if (!in_array($config->domains[$domain->domain_srl]->document_order, ['recent', 'view', 'vote']))
-			{
-				$config->domains[$domain->domain_srl]->document_order = 'recent';
-			}
-
-			$additional_urls = array();
-			$additional_urls = explode("\n", $vars->sitemaplite_additional_urls[$domain->domain_srl] ?? '');
-			$config->domains[$domain->domain_srl]->additional_urls = [];
-			foreach ($additional_urls as $additional_url)
-			{
-				$additional_url = trim($additional_url);
-				if ($additional_url)
-				{
-					$config->domains[$domain->domain_srl]->additional_urls[] = $additional_url;
-				}
-			}
-		}
-
-		// Refresh settings
-		$config->refresh_interval = $vars->sitemaplite_refresh_interval;
-		if (!in_array($config->refresh_interval, array('always', 'hourly', 'daily', 'weekly', 'monthly', 'manual')))
-		{
-			$config->refresh_interval = 'daily';
-		}
-
-		// Async settings
-		$config->use_async = ($vars->sitemaplite_use_async === 'Y') ? 'Y' : 'N';
-
-		// Search engine ping settings
-		$ping_search_engines = $vars->sitemaplite_ping_search_engines;
-		$config->ping_search_engines = is_array($ping_search_engines) ? $ping_search_engines : array();
-
-		// Delete old config items
-		unset($config->menu_srls);
-		unset($config->only_public_menus);
-		unset($config->document_source_modules);
-		unset($config->document_count);
-		unset($config->document_order);
-		unset($config->additional_urls);
-		unset($config->document_interval);
-
-		// Save new config
-		$oModuleController = getController('module');
-		$output = $oModuleController->insertModuleConfig('sitemaplite', $config);
-
-		// Try to write new sitemap.xml file
-		if ($output->toBool())
-		{
-			if (($config->use_async ?? 'N') === 'Y' && config('queue.enabled'))
-			{
-				Rhymix\Framework\Queue::addTask('SitemapliteModel::updateSitemapStatic', new stdClass());
-			}
-			else
-			{
-				$write_success = $this->writeSitemapXml($config);
-				if ($write_success)
-				{
-					$this->setMessage('success_registed');
-				}
-				else
-				{
-					if (class_exists('BaseObject'))
-					{
-						return new BaseObject(-1, 'msg_sitemaplite_failed_to_write_xml_file');
-					}
-					else
-					{
-						return new Object(-1, 'msg_sitemaplite_failed_to_write_xml_file');
-					}
-				}
-			}
+			Queue::addTask(self::class . '::updateSitemapStatic', new \stdClass());
 		}
 		else
 		{
-			return $output;
-		}
-
-		// Redirect back to config page
-		if (Context::get('success_return_url'))
-		{
-			$this->setRedirectUrl(Context::get('success_return_url'));
-		}
-		else
-		{
-			$this->setRedirectUrl(getNotEncodedUrl('', 'module', 'admin', 'act', 'dispSitemapliteAdminConfig'));
+			self::writeSitemapXml($config);
 		}
 	}
 
 	/**
-	 * Write sitemap.xml
+	 * Update wrapper #2
+	 *
+	 * @return void
 	 */
-	public function writeSitemapXml($config = null)
+	public static function updateSitemapStatic()
+	{
+		echo "Update triggered for Sitemap.xml\n";
+		self::writeSitemapXml();
+	}
+
+	/**
+	 * Write sitemap.xml
+	 *
+	 * @param ?object $config
+	 * @return bool
+	 */
+	public static function writeSitemapXml(?object $config = null)
 	{
 		// Use module config if a different config is not given
 		if (!$config)
 		{
-			$config = $this->getConfig();
+			$config = BaseController::getConfig();
 		}
 
 		// Get list of domains
@@ -155,8 +62,8 @@ class SitemapLiteAdminController extends SitemapLite
 		{
 			$scheme = $domain->security === 'always' ? 'https://' : 'http://';
 			$port = $domain->security === 'always' ? $domain->https_port : $domain->http_port;
-			$baseurl = $scheme . $domain->domain . ($port ? sprintf(':%d', $port) : '') .  parse_url(config('url.default'), PHP_URL_PATH);
-			$domain->sitemaplite_prefix = Rhymix\Framework\URL::encodeIdna($baseurl);
+			$baseurl = $scheme . $domain->domain . ($port ? sprintf(':%d', $port) : '') .  parse_url(config('url.default'), \PHP_URL_PATH);
+			$domain->sitemaplite_prefix = URL::encodeIdna($baseurl);
 
 			if ($config->sitemap_file_path === 'domains' || $domain->is_default_domain === 'Y')
 			{
@@ -171,7 +78,7 @@ class SitemapLiteAdminController extends SitemapLite
 			$urls = array('rel:');
 
 			// Insert URL for each item in menu
-			$oMenuAdminModel = getAdminModel('menu');
+			$oMenuAdminModel = MenuAdminModel::getInstance();
 			foreach ($domain_config->menu_srls as $menu_srl)
 			{
 				$categories_added = [];
@@ -187,7 +94,7 @@ class SitemapLiteAdminController extends SitemapLite
 						continue;
 					}
 
-					$url = $this->_formatUrl($item->url);
+					$url = self::_formatUrl($item->url);
 					if ($url !== false)
 					{
 						$urls[] = $url;
@@ -207,7 +114,7 @@ class SitemapLiteAdminController extends SitemapLite
 									$category_url = getNotEncodedUrl(['mid' => $item->url, 'category' => $category->category_srl]);
 									if (preg_match('!^https?://.+!', $category_url))
 									{
-										$category_url = parse_url($category_url, PHP_URL_PATH);
+										$category_url = parse_url($category_url, \PHP_URL_PATH);
 									}
 									$urls[] = 'abs:' . $category_url;
 								}
@@ -240,7 +147,7 @@ class SitemapLiteAdminController extends SitemapLite
 							$category_url = getNotEncodedUrl(['mid' => $midmap[$module_srl], 'category' => $category->category_srl]);
 							if (preg_match('!^https?://.+!', $category_url))
 							{
-								$category_url = parse_url($category_url, PHP_URL_PATH);
+								$category_url = parse_url($category_url, \PHP_URL_PATH);
 							}
 							$urls[] = 'abs:' . $category_url;
 						}
@@ -249,7 +156,7 @@ class SitemapLiteAdminController extends SitemapLite
 
 				// Add documents
 				$domain_config->midmap = $midmap;
-				$this->_addDocumentUrls($urls, $domain_config);
+				self::_addDocumentUrls($urls, $domain_config);
 			}
 
 			// Register additional URLs
@@ -257,7 +164,7 @@ class SitemapLiteAdminController extends SitemapLite
 			{
 				foreach ($domain_config->additional_urls as $url)
 				{
-					$url = $this->_formatUrl($url);
+					$url = self::_formatUrl($url);
 					if ($url !== false)
 					{
 						$urls[] = $url;
@@ -273,8 +180,8 @@ class SitemapLiteAdminController extends SitemapLite
 			$absprefix = $domain_info['scheme'] . '://' . $domain_info['host'] . (empty($domain_info['port']) ? '' : (':' . $domain_info['port']));
 
 			// Check XML path
-			$xml_path = $this->getSitemapXmlPath($config->sitemap_file_path, $domain_info['host']);
-			if (!$this->isWritable($xml_path))
+			$xml_path = BaseController::getSitemapXmlPath($config->sitemap_file_path, $domain_info['host']);
+			if (!BaseController::isWritable($xml_path))
 			{
 				return false;
 			}
@@ -301,26 +208,26 @@ class SitemapLiteAdminController extends SitemapLite
 						$url = $domain->sitemaplite_prefix . $url_value;
 						break;
 				}
-				if ($this->_isInternalUrl($url, $absprefix))
+				if (self::_isInternalUrl($url, $absprefix))
 				{
 					$xml .= '<url><loc>' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8', true) . '</loc></url>' . PHP_EOL;
 				}
 			}
 			$xml .= '</urlset>' . PHP_EOL;
-			FileHandler::writeFile($xml_path, $xml);
+			Storage::write($xml_path, $xml);
 
 			// Ping search engines
 			if ($config->ping_search_engines)
 			{
 				if ($config->sitemap_file_path === 'root' || $config->sitemap_file_path === 'sub')
 				{
-					$xml_url = $this->getSitemapXmlUrl($config->sitemap_file_path);
+					$xml_url = BaseController::getSitemapXmlUrl($config->sitemap_file_path);
 				}
 				else
 				{
 					$xml_url = $domain->sitemaplite_prefix . 'sitemap.xml';
 				}
-				$this->_pingSearchEngines($xml_url, $config->ping_search_engines);
+				self::_pingSearchEngines($xml_url, $config->ping_search_engines);
 			}
 		}
 
@@ -329,14 +236,17 @@ class SitemapLiteAdminController extends SitemapLite
 
 	/**
 	 * Format a URL
+	 *
+	 * @param string $url
+	 * @return string|false
 	 */
-	protected function _formatUrl($url)
+	protected static function _formatUrl(string $url)
 	{
 		// Cache settings
 		static $rewrite = null;
 		if ($rewrite === null)
 		{
-			$rewrite = Context::isAllowRewrite();
+			$rewrite = config('url.rewrite');
 		}
 
 		// Trim the URL
@@ -385,16 +295,23 @@ class SitemapLiteAdminController extends SitemapLite
 
 	/**
 	 * Check whether a URL is internal
+	 *
+	 * @param string $url
+	 * @param string $domain
+	 * @return bool
 	 */
-	protected function _isInternalUrl($url, $domain)
+	protected static function _isInternalUrl(string $url, string $domain): bool
 	{
 		return strncmp($url, $domain, strlen($domain)) === 0;
 	}
 
 	/**
 	 * Check whether a URL is allowed (block admin and member module URLs)
+	 *
+	 * @param string $url
+	 * @return bool
 	 */
-	protected function _isAllowedUrl($url)
+	protected static function _isAllowedUrl(string $url): bool
 	{
 		if (preg_match('@\b(?:admin|module=admin|act=(?:disp|proc)(?:member|socialxe)\w+)\b@i', $url))
 		{
@@ -408,11 +325,15 @@ class SitemapLiteAdminController extends SitemapLite
 
 	/**
 	 * Add document URLs
+	 *
+	 * @param array &$urls
+	 * @param object $config
+	 * @return void
 	 */
-	protected function _addDocumentUrls(&$urls, $config)
+	protected static function _addDocumentUrls(array &$urls, object $config)
 	{
 		// Get settings
-		$rewrite = Context::isAllowRewrite();
+		$rewrite = config('url.rewrite');
 
 		// Determine sort index
 		switch ($config->document_order)
@@ -423,7 +344,7 @@ class SitemapLiteAdminController extends SitemapLite
 		}
 
 		// Get documents
-		$args = new stdClass;
+		$args = new \stdClass;
 		$args->module_srl = $config->document_source_modules ?? [];
 		$args->list_count = $config->document_count ?? 100;
 		$args->sort_index = $sort_index;
@@ -467,29 +388,24 @@ class SitemapLiteAdminController extends SitemapLite
 
 	/**
 	 * Ping search engines
+	 *
+	 * @param string $url
+	 * @param array $search_engines
+	 * @return void
 	 */
-	protected function _pingSearchEngines($url, $search_engines = array())
+	protected static function _pingSearchEngines(string $url, array $search_engines = []): void
 	{
-		$pings = array(
+		$pings = [
 			'google' => 'http://www.google.com/webmasters/sitemaps/ping?sitemap=%s',
 			'bing' => 'http://www.bing.com/ping?sitemap=%s',
-		);
+		];
 
-		$config = array('ssl_verify_host' => false);
-		if (extension_loaded('curl'))
+		foreach ($search_engines as $search_engine)
 		{
-			$config['adapter'] = 'curl';
-		}
-
-		if ($search_engines)
-		{
-			foreach ($search_engines as $search_engine)
+			if (isset($pings[$search_engine]))
 			{
-				if (isset($pings[$search_engine]))
-				{
-					$ping_url = sprintf($pings[$search_engine], urlencode($url));
-					FileHandler::getRemoteResource($ping_url, null, 3, 'GET', null, array(), array(), array(), $config);
-				}
+				$ping_url = sprintf($pings[$search_engine], urlencode($url));
+				$request = HTTP::request($ping_url, 'GET', null, [], [], ['timeout' => 10]);
 			}
 		}
 	}

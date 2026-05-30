@@ -3,10 +3,13 @@
 	<grants />
 	<permissions />
 	<actions>
-		<action name="dispSitemapliteAdminConfig" type="view" admin_index="true" menu_name="sitemaplite" />
-		<action name="procSitemapliteAdminInsertConfig" type="controller" />
-		<action name="dispSitemapliteServeSitemapXml" type="view" method="GET" route="sitemap\.xml" global-route="true" />
+		<action name="dispSitemapliteAdminConfig" class="Controllers\Admin" admin_index="true" menu_name="sitemaplite" />
+		<action name="procSitemapliteAdminInsertConfig" class="Controllers\Admin" />
+		<action name="dispSitemapliteServeSitemapXml" class="Controllers\Serve" method="GET" route="sitemap\.xml" global-route="true" />
 	</actions>
+	<eventHandlers>
+		<eventHandler after="moduleObject.proc" class="Controllers\EventHandlers" method="triggerUpdateSitemapXML" />
+	</eventHandlers>
 	<menus>
 		<menu name="sitemaplite" type="all">
 			<title xml:lang="ko">사이트맵 Lite</title>

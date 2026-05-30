@@ -1,0 +1,9 @@
+{
+  "config": {
+    "optimize-autoloader": true,
+    "prepend-autoloader": false
+  },
+  "require": {
+    "rhymix/composer-stub": "dev-master"
+  }
+}

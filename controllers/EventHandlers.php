@@ -1,17 +1,18 @@
 <?php
 
-/**
- * @file sitemaplite.model.php
- * @author POESIS <kijin@poesis.dev>
- * @license GPLv2 or Later <https://www.gnu.org/licenses/gpl-2.0.html>
- * @brief Sitemap Lite Model
- */
-class SitemapLiteModel extends SitemapLite
+namespace Rhymix\Modules\SitemapLite\Controllers;
+
+use Rhymix\Modules\SitemapLite\Models\Sitemap as SitemapModel;
+
+class EventHandlers extends Base
 {
 	/**
 	 * Trigger called when sitemap.xml may need to be updated
+	 *
+	 * @param object $trigger_obj
+	 * @return void
 	 */
-	public function triggerUpdateSitemapXML($trigger_obj)
+	public function triggerUpdateSitemapXML(object $trigger_obj)
 	{
 		$config = $this->getConfig();
 
@@ -33,7 +34,7 @@ class SitemapLiteModel extends SitemapLite
 		// Update sitemap.xml if the menu has changed
 		if (isset($menu_target_actions[$trigger_obj->act]))
 		{
-			$this->updateSitemap($config);
+			SitemapModel::updateSitemap($config);
 			return;
 		}
 
@@ -59,33 +60,10 @@ class SitemapLiteModel extends SitemapLite
 					if ($timediff > 0 && filemtime($xml_path) < time() - $timediff)
 					{
 						@touch($xml_path);
-						$this->updateSitemap($config);
+						SitemapModel::updateSitemap($config);
 					}
 				}
 			}
 		}
-	}
-
-	/**
-	 * Update wrapper #1
-	 */
-	public function updateSitemap($config = null)
-	{
-		if (($config->use_async ?? 'N') === 'Y' && config('queue.enabled'))
-		{
-			Rhymix\Framework\Queue::addTask(self::class . '::updateSitemapStatic', new stdClass());
-		}
-		else
-		{
-			getAdminController('sitemaplite')->writeSitemapXml($config);
-		}
-	}
-
-	/**
-	 * Update wrapper #2
-	 */
-	public static function updateSitemapStatic()
-	{
-		getAdminController('sitemaplite')->writeSitemapXml();
 	}
 }
